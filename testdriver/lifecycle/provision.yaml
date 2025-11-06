@@ -1,0 +1,13 @@
+version: 6.0.0
+steps:
+  - prompt: Launch Chrome browser and navigate to the OpenTUI documentation site
+    commands:
+      - command: exec
+        lang: pwsh
+        code: |
+          # Launch Chrome with the OpenTUI documentation site
+          Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized", "${TD_WEBSITE}"
+          exit
+      - command: wait-for-text
+        text: "OpenTUI"
+        timeout: 30000
