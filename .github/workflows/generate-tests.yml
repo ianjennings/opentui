@@ -1,0 +1,65 @@
+name: Generate TestDriver Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Site to test'
+        required: true
+        type: choice
+        options:
+          - 'opencode.ai'
+          - 'terminal.shop'
+        default: 'opencode.ai'
+      app_type:
+        description: 'Application type'
+        required: true
+        default: 'web'
+      count:
+        description: 'Number of tests'
+        required: true
+        default: '5'
+
+jobs:
+  generate-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set deployment URL
+        id: get-url
+        run: |
+          if [ "${{ inputs.site }}" = "opencode.ai" ]; then
+            echo "deployment_url=https://opencode.ai" >> $GITHUB_OUTPUT
+          else
+            echo "deployment_url=https://terminal.shop" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate tests for ${{ inputs.site }}
+        env:
+          TD_API_KEY: ${{ secrets.TD_API_KEY }}
+          TD_WEBSITE: ${{ steps.get-url.outputs.deployment_url }}
+        run: |
+          echo "Generating tests for ${{ steps.get-url.outputs.deployment_url }}"
+          npx testdriverai@latest generate --app-type "${{ inputs.app_type }}" --count "${{ inputs.count }}" || true
+
+      - name: Commit generated tests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -d "testdriver/generate" ] && [ -n "$(ls -A testdriver/generate 2>/dev/null)" ]; then
+            git add testdriver/generate/
+            git commit -m "🧪 Auto-generate tests for ${{ inputs.site }}" || true
+            git push || true
+          else
+            echo "No tests generated or testdriver/generate directory is empty"
+          fi
